@@ -1,7 +1,6 @@
 package moreio
 
 import (
-	"bytes"
 	"io"
 	"iter"
 )
@@ -37,12 +36,14 @@ func JoinStrings(dst io.Writer, sep string, parts ...string) (n int64, err error
 		return 0, nil
 	}
 
-	buf := bytes.Buffer{}
+	var buf []byte
 	write := func(str string) (int64, error) {
-		buf.Reset()
-		buf.WriteString(str)
+		buf = buf[:0]
 
-		return buf.WriteTo(dst)
+		buf = append(buf, str...)
+
+		n, err := dst.Write(buf)
+		return int64(n), err
 	}
 
 	if strWriter, _ := dst.(io.StringWriter); strWriter != nil {
