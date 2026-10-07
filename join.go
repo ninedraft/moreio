@@ -5,6 +5,8 @@ import (
 	"iter"
 )
 
+// JoinReader copies each part into dst, separating byte streams
+// with provided sep. First error encounted is returned.
 func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (written int64, err error) {
 	if len(parts) == 0 {
 		return 0, nil
@@ -42,6 +44,13 @@ func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (written int64, e
 	return written, nil
 }
 
+// JoinStrings copies each part into dst, separating strings
+// with provided sep. First error encounted is returned.
+// JoinStrings will try to use dst.(io.StringWriter) if available.
+//
+// Semantically close to
+//
+//	dst.Write([]byte(strings.Join(parts, sep)))
 func JoinStrings(dst io.Writer, sep string, parts ...string) (written int64, err error) {
 	if len(parts) == 0 {
 		return 0, nil
@@ -96,6 +105,12 @@ func JoinStrings(dst io.Writer, sep string, parts ...string) (written int64, err
 	return written, nil
 }
 
+// JoinBytes copies each part into dst, separating bytes
+// with provided sep. First error encounted is returned.
+//
+// Semantically close to
+//
+//	dst.Write(bytes.Join(parts, sep))
 func JoinBytes(dst io.Writer, sep []byte, parts ...[]byte) (written int64, err error) {
 	if len(parts) == 0 {
 		return 0, nil
@@ -126,6 +141,8 @@ func JoinBytes(dst io.Writer, sep []byte, parts ...[]byte) (written int64, err e
 	return written, nil
 }
 
+// JoinBytes copies each part reader into dst, separating bytes streams
+// with provided sep. First error encounted is returned.
 func JoinStream(dst io.Writer, sep []byte, parts iter.Seq[io.Reader]) (written int64, err error) {
 	first := true
 	var buf []byte
