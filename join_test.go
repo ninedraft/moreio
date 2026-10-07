@@ -37,7 +37,7 @@ func BenchmarkJoinStrings_StringWriter(b *testing.B) {
 	}
 }
 
-func TestJoinReader(t *testing.T) {
+func TestJoinReaders(t *testing.T) {
 	makeParts := func(parts []string) []io.Reader {
 		pp := make([]io.Reader, 0, len(parts))
 		for _, part := range parts {
@@ -80,7 +80,7 @@ func TestJoinReader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &strings.Builder{}
-			n, err := moreio.JoinReader(got, []byte(tt.sep), makeParts(tt.parts)...)
+			n, err := moreio.JoinReaders(got, []byte(tt.sep), makeParts(tt.parts)...)
 
 			assert.Equal(t, strings.Join(tt.parts, tt.sep), got.String(), "result must be equal to strings.Join")
 			assert.Equal(t, tt.want, n, "moreio.JoinReader(sep, parts).written")
@@ -149,7 +149,7 @@ func TestJoinBytes(t *testing.T) {
 	}
 }
 
-func TestJoinStream(t *testing.T) {
+func TestJoinReadersSeq(t *testing.T) {
 	tests := []struct {
 		name  string
 		sep   []byte
@@ -172,7 +172,7 @@ func TestJoinStream(t *testing.T) {
 				}
 			}
 			var dst bytes.Buffer
-			n, err := moreio.JoinStream(&dst, tt.sep, iter.Seq[io.Reader](parts))
+			n, err := moreio.JoinReadersSeq(&dst, tt.sep, iter.Seq[io.Reader](parts))
 			assert.NoError(t, err)
 			assert.Equal(t, tt.want, dst.String())
 			assert.Equal(t, int64(len(tt.want)), n)

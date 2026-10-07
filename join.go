@@ -5,9 +5,9 @@ import (
 	"iter"
 )
 
-// JoinReader copies each part into dst, separating byte streams
+// JoinReaders copies each part into dst, separating byte streams
 // with provided sep. First error encounted is returned.
-func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (written int64, err error) {
+func JoinReaders(dst io.Writer, sep []byte, parts ...io.Reader) (written int64, err error) {
 	if len(parts) == 0 {
 		return 0, nil
 	}
@@ -36,6 +36,36 @@ func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (written int64, e
 
 		n, err := copyMakeBuf(dst, part, &buf)
 		written += n
+		if err != nil {
+			return written, err
+		}
+	}
+
+	return written, nil
+}
+
+// JoinReadersSeq copies each part reader into dst, separating bytes streams
+// with provided sep. First error encounted is returned.
+func JoinReadersSeq(dst io.Writer, sep []byte, parts iter.Seq[io.Reader]) (written int64, err error) {
+	first := true
+	var buf []byte
+
+	for part := range parts {
+		if !first && len(sep) > 0 {
+			n, err := dst.Write(sep)
+			written += int64(n)
+			if err != nil {
+				return written, err
+			}
+			if n != len(sep) {
+				return written, io.ErrShortWrite
+			}
+		}
+		first = false
+
+		n, err := copyMakeBuf(dst, part, &buf)
+		written += n
+
 		if err != nil {
 			return written, err
 		}
@@ -135,36 +165,6 @@ func JoinBytes(dst io.Writer, sep []byte, parts ...[]byte) (written int64, err e
 		}
 		if n != len(part) {
 			return written, io.ErrShortWrite
-		}
-	}
-
-	return written, nil
-}
-
-// JoinBytes copies each part reader into dst, separating bytes streams
-// with provided sep. First error encounted is returned.
-func JoinStream(dst io.Writer, sep []byte, parts iter.Seq[io.Reader]) (written int64, err error) {
-	first := true
-	var buf []byte
-
-	for part := range parts {
-		if !first && len(sep) > 0 {
-			n, err := dst.Write(sep)
-			written += int64(n)
-			if err != nil {
-				return written, err
-			}
-			if n != len(sep) {
-				return written, io.ErrShortWrite
-			}
-		}
-		first = false
-
-		n, err := copyMakeBuf(dst, part, &buf)
-		written += n
-
-		if err != nil {
-			return written, err
 		}
 	}
 
