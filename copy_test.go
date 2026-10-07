@@ -1,26 +1,38 @@
-package moreio
+package moreio_test
 
 import (
 	"bytes"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/ninedraft/moreio"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestCopyMakeBufZeroLengthWithCapacity(t *testing.T) {
-	var output bytes.Buffer
-	dst := struct{ io.Writer }{Writer: &output}
-	src := struct{ io.Reader }{Reader: strings.NewReader("x")}
-	buf := make([]byte, 0, 8)
+func TestJoinReadersCopyPaths(t *testing.T) {
+	part := strings.Repeat("x", 64*1024+1)
+	want := "abc|" + part
 
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("copyMakeBuf panicked with a buffer that has capacity: %v", r)
-		}
-	}()
+	t.Run("destination ReaderFrom", func(t *testing.T) {
+		var dst bytes.Buffer
+		first := struct{ io.Reader }{Reader: strings.NewReader("abc")}
+		second := struct{ io.Reader }{Reader: strings.NewReader(part)}
+		n, err := moreio.JoinReaders(&dst, []byte("|"), first, second)
+		require.NoError(t, err)
+		assert.Equal(t, int64(len(want)), n)
+		assert.Equal(t, want, dst.String())
+	})
 
-	n, err := copyMakeBuf(dst, src, &buf)
-	if n != 1 || err != nil || output.String() != "x" {
-		t.Errorf("copyMakeBuf = (%d, %v), output = %q; want (1, nil), %q", n, err, output.String(), "x")
-	}
+	t.Run("plain Writer and Reader", func(t *testing.T) {
+		var output bytes.Buffer
+		dst := struct{ io.Writer }{Writer: &output}
+		first := struct{ io.Reader }{Reader: strings.NewReader("abc")}
+		second := struct{ io.Reader }{Reader: strings.NewReader(part)}
+		n, err := moreio.JoinReaders(dst, []byte("|"), first, second)
+		require.NoError(t, err)
+		assert.Equal(t, int64(len(want)), n)
+		assert.Equal(t, want, output.String())
+	})
 }
