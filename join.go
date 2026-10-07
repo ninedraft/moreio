@@ -32,10 +32,6 @@ func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (n int64, err err
 }
 
 func JoinStrings(dst io.Writer, sep string, parts ...string) (n int64, err error) {
-	if len(parts) == 0 {
-		return 0, nil
-	}
-
 	var buf []byte
 	write := func(str string) (int64, error) {
 		buf = buf[:0]
