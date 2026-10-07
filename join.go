@@ -53,16 +53,22 @@ func JoinStrings(dst io.Writer, sep string, parts ...string) (n int64, err error
 		}
 	}
 
-	for i, p := range parts {
-		if i > 0 && len(sep) > 0 {
-			m, err := write(sep)
-			n += m
-			if err != nil {
-				return n, err
-			}
+	if len(parts) > 0 {
+		m, err := write(sep)
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+
+	for _, p := range parts[1:] {
+		m, err := write(sep)
+		n += m
+		if err != nil {
+			return n, err
 		}
 
-		m, err := write(p)
+		m, err = write(p)
 		n += m
 		if err != nil {
 			return n, err
