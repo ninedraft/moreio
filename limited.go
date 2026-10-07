@@ -102,6 +102,9 @@ func (lw *limitedWriter) Write(p []byte) (int, error) {
 	}
 
 	if lw.N <= 0 {
+		if len(p) == 0 {
+			return 0, nil
+		}
 		lw.LastErr = ErrTooLarge
 		return 0, lw.LastErr
 	}
@@ -110,7 +113,7 @@ func (lw *limitedWriter) Write(p []byte) (int, error) {
 		n, err := lw.Dst.Write(p[:lw.N])
 		lw.N -= int64(n)
 		lw.LastErr = errors.Join(err, ErrTooLarge)
-		return 0, lw.LastErr
+		return n, lw.LastErr
 	}
 
 	n, err := lw.Dst.Write(p)
@@ -127,7 +130,7 @@ type limitedReaderFrom struct {
 }
 
 func (re *limitedReaderFrom) ReadFrom(r io.Reader) (int64, error) {
-	if re.N <= 0 || re.LastErr != nil {
+	if re.LastErr != nil {
 		return 0, re.LastErr
 	}
 
@@ -138,11 +141,7 @@ func (re *limitedReaderFrom) ReadFrom(r io.Reader) (int64, error) {
 		re.LastErr = err
 	}
 
-	remain := lr.N - 1
-	if remain < 0 {
-		remain = 0
-	}
-	re.N = remain
+	re.N = max(lr.N-1, 0)
 
 	return n, re.LastErr
 }

@@ -27,5 +27,7 @@ func copyMakeBuf(dst io.Writer, src io.Reader, buf *[]byte) (written int64, err 
 		*buf = make([]byte, defaultCopyBufferSize)
 	}
 
+	*buf = (*buf)[:cap(*buf)]
+
 	return io.CopyBuffer(dst, src, *buf)
 }
