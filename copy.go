@@ -6,11 +6,8 @@ import (
 
 const defaultCopyBufferSize = 32 * 1024
 
-// copyBuffer is the actual implementation of Copy and CopyBuffer.
-// if buf is nil, one is allocated.
 func copyMakeBuf(dst io.Writer, src io.Reader, buf *[]byte) (written int64, err error) {
 	// If the reader has a WriteTo method, use it to do the copy.
-	// Avoids an allocation and a copy.
 	if wt, ok := src.(io.WriterTo); ok {
 		return wt.WriteTo(dst)
 	}

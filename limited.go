@@ -1,3 +1,5 @@
+// Package moreio joins readers, strings, and byte slices into an io.Writer.
+// It also provides wrappers that limit bytes returned by a reader or accepted by a writer.
 package moreio
 
 import (
@@ -6,15 +8,17 @@ import (
 	"math"
 )
 
+// ErrTooLarge reports an attempt to read or write beyond a byte limit.
 var ErrTooLarge = errors.New("size limit exceeded")
 
-// LimitReader enforces strict limit on bytes which can be read from resulting reader.
-// It guarantees not more then n+1 bytes to be read from underlying reader.
+// LimitReader returns a reader that yields at most n bytes from source.
+// It returns ErrTooLarge when it detects data beyond the limit.
+// Calls to Read consume at most n+1 bytes from source to detect excess data.
 //
-// If n == math.MaxInt64 or n < 0, then no limit is enforced.
-// Resulting reader returns ErrTooLarge if limit is violated.
+// A negative n or n == math.MaxInt64 disables the limit.
 //
-// LimitReader will attemt to use source.(io.WriterTo) if available.
+// If source implements io.WriterTo, the returned reader also implements io.WriterTo.
+// A call to WriteTo can consume more than n+1 bytes from source.
 func LimitReader(source io.Reader, n int64) io.Reader {
 	if n == math.MaxInt64 || n < 0 {
 		// limit overflow or unlimited
@@ -83,12 +87,12 @@ func (re *limitedReaderWriterTo) WriteTo(w io.Writer) (int64, error) {
 	return n, re.LastErr
 }
 
-// LimitWriter enforces strict limit of n on bytes which can be written to resulting writer.
+// LimitWriter returns a writer that accepts at most n bytes.
+// It returns ErrTooLarge when it detects input beyond the limit.
 //
-// If n == math.MaxInt64 or n < 0, then no limit is enforced.
-// Resulting writer returns ErrTooLarge if limit is violated.
+// A negative n or n == math.MaxInt64 disables the limit.
 //
-// LimitWriter will attempt to use dst.(io.ReaderFrom) if available.
+// If dst implements io.ReaderFrom, the returned writer also implements io.ReaderFrom.
 func LimitWriter(dst io.Writer, n int64) io.Writer {
 	if n == math.MaxInt64 || n < 0 {
 		// limit overflow or unlimited
