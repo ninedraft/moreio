@@ -5,30 +5,41 @@ import (
 	"iter"
 )
 
-func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (n int64, err error) {
+func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (written int64, err error) {
 	if len(parts) == 0 {
 		return 0, nil
 	}
 
-	buf := onceValue(makeDefaultCopyBuffer)
+	var buf []byte
 
-	for i, p := range parts {
-		if i > 0 && len(sep) > 0 {
-			m, err := dst.Write(sep)
-			n += int64(m)
-			if err != nil {
-				return n, err
-			}
-		}
-
-		m, err := copyMakeBuf(dst, p, buf)
-		n += m
+	if len(parts) > 0 {
+		n, err := copyMakeBuf(dst, parts[0], &buf)
+		written += n
 		if err != nil {
-			return n, err
+			return written, err
 		}
 	}
 
-	return n, nil
+	for _, part := range parts[1:] {
+		if len(sep) > 0 {
+			n, err := dst.Write(sep)
+			written += int64(n)
+			if err != nil {
+				return written, err
+			}
+			if n != len(sep) {
+				return written, io.ErrShortWrite
+			}
+		}
+
+		n, err := copyMakeBuf(dst, part, &buf)
+		written += n
+		if err != nil {
+			return written, err
+		}
+	}
+
+	return written, nil
 }
 
 func JoinStrings(dst io.Writer, sep string, parts ...string) (written int64, err error) {
@@ -49,75 +60,96 @@ func JoinStrings(dst io.Writer, sep string, parts ...string) (written int64, err
 	}
 
 	if len(parts) > 0 {
-		n, err := write(parts[0])
+		part := parts[0]
+
+		n, err := write(part)
 		written += int64(n)
 		if err != nil {
 			return written, err
 		}
+
+		if n != len(part) {
+			return written, io.ErrShortWrite
+		}
 	}
 
-	for _, p := range parts[1:] {
+	for _, part := range parts[1:] {
 		n, err := write(sep)
 		written += int64(n)
 		if err != nil {
 			return written, err
 		}
+		if n != len(sep) {
+			return written, io.ErrShortWrite
+		}
 
-		n, err = write(p)
+		n, err = write(part)
 		written += int64(n)
 		if err != nil {
 			return written, err
+		}
+		if n != len(part) {
+			return written, io.ErrShortWrite
 		}
 	}
 
 	return written, nil
 }
 
-func JoinBytes(dst io.Writer, sep []byte, parts ...[]byte) (n int64, err error) {
+func JoinBytes(dst io.Writer, sep []byte, parts ...[]byte) (written int64, err error) {
 	if len(parts) == 0 {
 		return 0, nil
 	}
 
-	for i, p := range parts {
+	for i, part := range parts {
 		if i > 0 && len(sep) > 0 {
-			m, err := dst.Write(sep)
-			n += int64(m)
+			n, err := dst.Write(sep)
+			written += int64(n)
 			if err != nil {
-				return n, err
+				return written, err
+			}
+			if n != len(sep) {
+				return written, io.ErrShortWrite
 			}
 		}
 
-		m, err := dst.Write(p)
-		n += int64(m)
+		n, err := dst.Write(part)
+		written += int64(n)
 		if err != nil {
-			return n, err
+			return written, err
+		}
+		if n != len(part) {
+			return written, io.ErrShortWrite
 		}
 	}
 
-	return n, nil
+	return written, nil
 }
 
-func JoinStream(dst io.Writer, sep []byte, parts iter.Seq[io.Reader]) (n int64, err error) {
+func JoinStream(dst io.Writer, sep []byte, parts iter.Seq[io.Reader]) (written int64, err error) {
 	first := true
-	buf := onceValue(makeDefaultCopyBuffer)
+	var buf []byte
 
 	for part := range parts {
 		if !first && len(sep) > 0 {
-			m, err := dst.Write(sep)
-			n += int64(m)
+			n, err := dst.Write(sep)
+			written += int64(n)
 			if err != nil {
-				return n, err
+				return written, err
+			}
+			if n != len(sep) {
+				return written, io.ErrShortWrite
 			}
 		}
 		first = false
 
-		m, err := copyMakeBuf(dst, part, buf)
-		n += m
+		n, err := copyMakeBuf(dst, part, &buf)
+		written += n
 
 		if err != nil {
-			return n, err
+			return written, err
 		}
 	}
 
-	return n, nil
+	return written, nil
 }
