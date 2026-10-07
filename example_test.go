@@ -11,7 +11,7 @@ import (
 )
 
 func ExampleJoinReaders() {
-	moreio.JoinReaders(os.Stdout, []byte("|"),
+	_, _ = moreio.JoinReaders(os.Stdout, []byte("|"),
 		strings.NewReader("foo"),
 		bytes.NewReader([]byte("bar")),
 		bytes.NewBufferString("lat"))
@@ -28,12 +28,12 @@ func ExampleJoinReadersSeq() {
 		}
 	}
 
-	moreio.JoinReadersSeq(os.Stdout, []byte("|"), seq)
+	_, _ = moreio.JoinReadersSeq(os.Stdout, []byte("|"), seq)
 	// Output: 0|1|2|3|4
 }
 
 func ExampleJoinBytes() {
-	moreio.JoinBytes(os.Stdout, []byte("|"),
+	_, _ = moreio.JoinBytes(os.Stdout, []byte("|"),
 		[]byte("foo"),
 		[]byte("bar"),
 		[]byte("lat"))
@@ -41,7 +41,7 @@ func ExampleJoinBytes() {
 }
 
 func ExampleJoinStrings() {
-	moreio.JoinStrings(os.Stdout, "|",
+	_, _ = moreio.JoinStrings(os.Stdout, "|",
 		"foo", "bar", "lat")
 	// Output: foo|bar|lat
 }
