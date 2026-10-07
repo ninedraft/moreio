@@ -8,7 +8,14 @@ import (
 
 var ErrTooLarge = errors.New("size limit exceeded")
 
-func LimitedReader(source io.Reader, n int64) io.Reader {
+// LimitReader enforces strict limit on bytes which can be read from resulting reader.
+// It guarantees not more then n+1 bytes to be read from underlying reader.
+//
+// If n == math.MaxInt64 or n < 0, then no limit is enforced.
+// Resulting reader returns ErrTooLarge if limit is violated.
+//
+// LimitReader will attemt to use source.(io.WriterTo) if available.
+func LimitReader(source io.Reader, n int64) io.Reader {
 	if n == math.MaxInt64 || n < 0 {
 		// limit overflow or unlimited
 		return source
@@ -76,7 +83,13 @@ func (re *limitedReaderWriterTo) WriteTo(w io.Writer) (int64, error) {
 	return n, re.LastErr
 }
 
-func LimitedWriter(dst io.Writer, n int64) io.Writer {
+// LimitWriter enforces strict limit of n on bytes which can be written to resulting writer.
+//
+// If n == math.MaxInt64 or n < 0, then no limit is enforced.
+// Resulting writer returns ErrTooLarge if limit is violated.
+//
+// LimitWriter will attempt to use dst.(io.ReaderFrom) if available.
+func LimitWriter(dst io.Writer, n int64) io.Writer {
 	if n == math.MaxInt64 || n < 0 {
 		// limit overflow or unlimited
 		return dst
