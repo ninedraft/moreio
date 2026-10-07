@@ -37,32 +37,32 @@ func JoinStrings(dst io.Writer, sep string, parts ...string) (n int64, err error
 	}
 
 	var buf []byte
-	write := func(str string) (int64, error) {
+	write := func(str string) error {
 		buf = buf[:0]
 		buf = append(buf, str...)
 
-		n, err := dst.Write(buf)
-		return int64(n), err
+		m, err := dst.Write(buf)
+		n += int64(m)
+		return err
 	}
 
 	if strWriter, _ := dst.(io.StringWriter); strWriter != nil {
-		write = func(str string) (int64, error) {
+		write = func(str string) error {
 			m, err := strWriter.WriteString(str)
-			return int64(m), err
+			n += int64(m)
+			return err
 		}
 	}
 
 	if len(parts) > 0 {
 		if len(sep) > 0 {
-			m, err := write(sep)
-			n += m
+			err := write(sep)
 			if err != nil {
 				return n, err
 			}
 		}
 
-		m, err := write(parts[0])
-		n += m
+		err := write(parts[0])
 		if err != nil {
 			return n, err
 		}
@@ -70,15 +70,13 @@ func JoinStrings(dst io.Writer, sep string, parts ...string) (n int64, err error
 
 	for i, p := range parts[1:] {
 		if i > 0 && len(sep) > 0 {
-			m, err := write(sep)
-			n += m
+			err := write(sep)
 			if err != nil {
 				return n, err
 			}
 		}
 
-		m, err := write(p)
-		n += m
+		err := write(p)
 		if err != nil {
 			return n, err
 		}
