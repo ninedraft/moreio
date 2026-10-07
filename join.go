@@ -37,7 +37,7 @@ func JoinStrings(dst io.Writer, sep string, parts ...string) (n int64, err error
 		return 0, nil
 	}
 
-	buf := &bytes.Buffer{}
+	buf := bytes.Buffer{}
 	write := func(str string) (int64, error) {
 		buf.Reset()
 		buf.WriteString(str)
