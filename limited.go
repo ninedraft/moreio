@@ -1,5 +1,6 @@
 // Package moreio joins readers, strings, and byte slices into an io.Writer.
 // It also provides wrappers that limit bytes returned by a reader or accepted by a writer.
+// Join functions stop after the first error and can leave partial output.
 package moreio
 
 import (
