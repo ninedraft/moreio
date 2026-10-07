@@ -31,58 +31,56 @@ func JoinReader(dst io.Writer, sep []byte, parts ...io.Reader) (n int64, err err
 	return n, nil
 }
 
-func JoinStrings(dst io.Writer, sep string, parts ...string) (n int64, err error) {
+func JoinStrings(dst io.Writer, sep string, parts ...string) (written int64, err error) {
 	if len(parts) == 0 {
 		return 0, nil
 	}
 
 	var buf []byte
-	write := func(str string) error {
+	write := func(str string) (int, error) {
 		buf = buf[:0]
 		buf = append(buf, str...)
 
-		m, err := dst.Write(buf)
-		n += int64(m)
-		return err
+		return dst.Write(buf)
 	}
 
 	if strWriter, _ := dst.(io.StringWriter); strWriter != nil {
-		write = func(str string) error {
-			m, err := strWriter.WriteString(str)
-			n += int64(m)
-			return err
-		}
+		write = strWriter.WriteString
 	}
 
 	if len(parts) > 0 {
 		if len(sep) > 0 {
-			err := write(sep)
+			n, err := write(sep)
+			written += int64(n)
 			if err != nil {
-				return n, err
+				return written, err
 			}
 		}
 
-		err := write(parts[0])
+		n, err := write(parts[0])
+		written += int64(n)
 		if err != nil {
-			return n, err
+			return written, err
 		}
 	}
 
 	for i, p := range parts[1:] {
 		if i > 0 && len(sep) > 0 {
-			err := write(sep)
+			n, err := write(sep)
+			written += int64(n)
 			if err != nil {
-				return n, err
+				return written, err
 			}
 		}
 
-		err := write(p)
+		n, err := write(p)
+		written += int64(n)
 		if err != nil {
-			return n, err
+			return written, err
 		}
 	}
 
-	return n, nil
+	return written, nil
 }
 
 func JoinBytes(dst io.Writer, sep []byte, parts ...[]byte) (n int64, err error) {
