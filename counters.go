@@ -35,3 +35,35 @@ func (cnt *CounterWriter) Write(data []byte) (int, error) {
 
 	return n, err
 }
+
+// CounterReader stores atomic counter of bytes read.
+type CounterReader struct {
+	counter atomic.Int64
+	re      io.Reader
+}
+
+// CountReads records number of bytes read from src.
+func CountReads(src io.Reader) *CounterReader {
+	if src == nil {
+		panic("nil reader")
+	}
+
+	return &CounterReader{
+		re: src,
+	}
+}
+
+// ReadBytes returns number bytes read from src.
+// It's safe to call it concurrently with .Read method.
+func (cnt *CounterReader) ReadBytes() int64 {
+	return cnt.counter.Load()
+}
+
+// Read method implements io.Reader interface.
+func (cnt *CounterReader) Read(data []byte) (int, error) {
+	n, err := cnt.re.Read(data)
+
+	cnt.counter.Add(int64(n))
+
+	return n, err
+}

@@ -37,3 +37,27 @@ func TestCounterWrites(t *testing.T) {
 	require.Equal(t, int64(len(sample)), wr.WrittenBytes(), "moreio.CounterWriter.WrittenBytes() == len(sample)")
 	require.Equal(t, string(sample), gotData.String(), "moreio.CounterWriter must pass bytes into dst unchanged")
 }
+
+func ExampleCountReads() {
+	data := strings.NewReader("sample text")
+	buf := make([]byte, 6)
+
+	counter := moreio.CountReads(data)
+	n, _ := counter.Read(buf)
+	fmt.Printf("%s %d=%d bytes\n", buf, counter.ReadBytes(), n)
+	// Output: sample 6=6 bytes
+}
+
+func TestCountReads(t *testing.T) {
+	t.Parallel()
+
+	const sample = "sample data"
+
+	re := moreio.CountReads(strings.NewReader(sample))
+
+	got, err := io.ReadAll(re)
+
+	require.NoError(t, err, "read all from moreio.CountReads(sample)")
+	require.Equal(t, len(sample), len(got), "read all from moreio.CountReads(sample) bytes")
+	require.Equal(t, int64(len(sample)), re.ReadBytes(), "moreio.CountReads(sample).ReadBytes")
+}
