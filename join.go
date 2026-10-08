@@ -144,8 +144,21 @@ func JoinBytes(dst io.Writer, sep []byte, parts ...[]byte) (written int64, err e
 		return 0, nil
 	}
 
-	for i, part := range parts {
-		if i > 0 && len(sep) > 0 {
+	if len(parts) > 0 {
+		part := parts[0]
+
+		n, err := dst.Write(part)
+		written += int64(n)
+		if err != nil {
+			return written, err
+		}
+		if n != len(part) {
+			return written, io.ErrShortWrite
+		}
+	}
+
+	for _, part := range parts[1:] {
+		if len(sep) > 0 {
 			n, err := dst.Write(sep)
 			written += int64(n)
 			if err != nil {
