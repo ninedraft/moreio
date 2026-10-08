@@ -13,6 +13,9 @@ type CounterWriter struct {
 
 // CountWrites records number of bytes written to dst.
 func CountWrites(dst io.Writer) *CounterWriter {
+	if dst == nil {
+		panic("nil writer")
+	}
 	return &CounterWriter{
 		wr: dst,
 	}
@@ -20,7 +23,7 @@ func CountWrites(dst io.Writer) *CounterWriter {
 
 // Written returns number of bytes written to dst writer.
 // It's safe to call it concurrently with .Write method.
-func (cnt *CounterWriter) Written() int64 {
+func (cnt *CounterWriter) WrittenBytes() int64 {
 	return cnt.counter.Load()
 }
 
