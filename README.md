@@ -1,9 +1,9 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/ninedraft/moreio.svg)](https://pkg.go.dev/github.com/ninedraft/moreio)
-[![CI](https://github.com/ninedraft/moreio/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/ninedraft/moreio/actions/workflows/ci.yml)
+[![Go](https://github.com/ninedraft/moreio/actions/workflows/go.yml/badge.svg)](https://github.com/ninedraft/moreio/actions/workflows/go.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/ninedraft/moreio)](https://github.com/ninedraft/moreio/blob/master/go.mod)
 [![License](https://img.shields.io/github/license/ninedraft/moreio)](https://github.com/ninedraft/moreio/blob/master/LICENSE)
 [![Release](https://img.shields.io/github/v/release/ninedraft/moreio)](https://github.com/ninedraft/moreio/releases)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ninedraft/moreio/badge)](https://scorecard.dev/viewer/?uri=github.com/ninedraft/moreio)
+
 
 # moreio
 
