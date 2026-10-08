@@ -22,6 +22,23 @@ type failingWriter struct {
 	err    error
 }
 
+type recordingWriter struct{ calls []string }
+
+func (w *recordingWriter) Write(p []byte) (int, error) {
+	w.calls = append(w.calls, string(p))
+	return len(p), nil
+}
+
+type recordingStringWriter struct {
+	recordingWriter
+	stringCalls []string
+}
+
+func (w *recordingStringWriter) WriteString(s string) (int, error) {
+	w.stringCalls = append(w.stringCalls, s)
+	return len(s), nil
+}
+
 func (w *failingWriter) Write(p []byte) (int, error) {
 	w.calls++
 	if w.calls == w.failAt {
@@ -169,6 +186,60 @@ func TestJoinBytes(t *testing.T) {
 	}
 }
 
+func TestJoinStringsWriteCalls(t *testing.T) {
+	tests := []struct {
+		name  string
+		sep   string
+		parts []string
+		want  []string
+	}{
+		{name: "no parts", sep: "|"},
+		{name: "empty separator", parts: []string{"", "ab", "", "cd"}, want: []string{"", "ab", "", "cd"}},
+		{name: "separator", sep: "|", parts: []string{"ab", "cd"}, want: []string{"ab", "|", "cd"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dst := &recordingWriter{}
+			n, err := moreio.JoinStrings(dst, tt.sep, tt.parts...)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, dst.calls)
+			assert.Equal(t, int64(len(strings.Join(tt.parts, tt.sep))), n)
+
+			stringDst := &recordingStringWriter{}
+			n, err = moreio.JoinStrings(stringDst, tt.sep, tt.parts...)
+			assert.NoError(t, err)
+			assert.Empty(t, stringDst.calls)
+			assert.Equal(t, tt.want, stringDst.stringCalls)
+			assert.Equal(t, int64(len(strings.Join(tt.parts, tt.sep))), n)
+		})
+	}
+}
+
+func TestJoinBytesWriteCalls(t *testing.T) {
+	tests := []struct {
+		name  string
+		sep   []byte
+		parts [][]byte
+		want  []string
+	}{
+		{name: "no parts", sep: []byte("|")},
+		{name: "one part", sep: []byte("|"), parts: [][]byte{[]byte("ab")}, want: []string{"ab"}},
+		{name: "empty first part", sep: []byte("|"), parts: [][]byte{nil, []byte("cd")}, want: []string{"", "|", "cd"}},
+		{name: "empty separator", parts: [][]byte{[]byte("ab"), []byte("cd")}, want: []string{"ab", "cd"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dst := &recordingWriter{}
+			n, err := moreio.JoinBytes(dst, tt.sep, tt.parts...)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, dst.calls)
+			assert.Equal(t, int64(len(bytes.Join(tt.parts, tt.sep))), n)
+		})
+	}
+}
+
 func TestJoinReadersSeq(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -249,6 +320,7 @@ func TestJoinFailures(t *testing.T) {
 		wantErr error
 	}{
 		{name: "short first part", failAt: 1, n: 1, want: "a", wantErr: io.ErrShortWrite},
+		{name: "first part error", failAt: 1, n: 1, err: wantErr, want: "a", wantErr: wantErr},
 		{name: "short separator", failAt: 2, want: "ab", wantErr: io.ErrShortWrite},
 		{name: "separator error", failAt: 2, err: wantErr, want: "ab", wantErr: wantErr},
 		{name: "short later part", failAt: 3, n: 1, want: "ab|c", wantErr: io.ErrShortWrite},
