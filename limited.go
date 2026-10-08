@@ -15,6 +15,7 @@ var ErrTooLarge = errors.New("size limit exceeded")
 // LimitReader returns a reader that yields at most n bytes from source.
 // It returns ErrTooLarge when it detects data beyond the limit.
 // Calls to Read consume at most n+1 bytes from source to detect excess data.
+// Once excess data is detected, later calls return ErrTooLarge; other errors are not retained.
 //
 // A negative n or n == math.MaxInt64 disables the limit.
 //
@@ -36,14 +37,14 @@ func LimitReader(source io.Reader, n int64) io.Reader {
 }
 
 type limitedReader struct {
-	Source  io.Reader // underlying reader
-	N       int64     // max bytes remaining
-	LastErr error     // last error encountered
+	Source   io.Reader // underlying reader
+	N        int64     // max bytes remaining
+	exceeded bool
 }
 
 func (re *limitedReader) Read(p []byte) (int, error) {
-	if re.N <= 0 || re.LastErr != nil {
-		return 0, re.LastErr
+	if re.exceeded {
+		return 0, ErrTooLarge
 	}
 
 	if int64(len(p)) > re.N {
@@ -54,6 +55,7 @@ func (re *limitedReader) Read(p []byte) (int, error) {
 	re.N -= int64(n)
 
 	if re.N <= 0 { // hard limit reached
+		re.exceeded = true
 		if errors.Is(err, io.EOF) {
 			err = nil
 		}
@@ -62,9 +64,7 @@ func (re *limitedReader) Read(p []byte) (int, error) {
 		n--
 	}
 
-	re.LastErr = err
-
-	return n, re.LastErr
+	return n, err
 }
 
 type limitedReaderWriterTo struct {
@@ -73,23 +73,22 @@ type limitedReaderWriterTo struct {
 }
 
 func (re *limitedReaderWriterTo) WriteTo(w io.Writer) (int64, error) {
-	if re.N <= 0 || re.LastErr != nil {
-		return 0, re.LastErr
+	if re.exceeded {
+		return 0, ErrTooLarge
 	}
 
 	lw := &limitedWriter{Dst: w, N: max(re.N-1, 0)}
 
 	n, err := re.wr.WriteTo(lw)
-	if err != nil {
-		re.LastErr = err
-	}
 	re.N -= n
+	re.exceeded = lw.exceeded
 
-	return n, re.LastErr
+	return n, err
 }
 
 // LimitWriter returns a writer that accepts at most n bytes.
 // It returns ErrTooLarge when it detects input beyond the limit.
+// Once excess input is detected, later calls return ErrTooLarge; other errors are not retained.
 //
 // A negative n or n == math.MaxInt64 disables the limit.
 //
@@ -109,37 +108,35 @@ func LimitWriter(dst io.Writer, n int64) io.Writer {
 }
 
 type limitedWriter struct {
-	Dst     io.Writer
-	N       int64 // max bytes remaining to write
-	LastErr error
+	Dst      io.Writer
+	N        int64 // max bytes remaining to write
+	exceeded bool
 }
 
 func (lw *limitedWriter) Write(p []byte) (int, error) {
-	if lw.LastErr != nil {
-		return 0, lw.LastErr
+	if lw.exceeded {
+		return 0, ErrTooLarge
 	}
 
 	if lw.N <= 0 {
 		if len(p) == 0 {
 			return 0, nil
 		}
-		lw.LastErr = ErrTooLarge
-		return 0, lw.LastErr
+		lw.exceeded = true
+		return 0, ErrTooLarge
 	}
 
 	if int64(len(p)) > lw.N {
 		n, err := lw.Dst.Write(p[:lw.N])
 		lw.N -= int64(n)
-		lw.LastErr = errors.Join(err, ErrTooLarge)
-		return n, lw.LastErr
+		lw.exceeded = true
+		return n, errors.Join(err, ErrTooLarge)
 	}
 
 	n, err := lw.Dst.Write(p)
 	lw.N -= int64(n)
 
-	lw.LastErr = err
-
-	return n, lw.LastErr
+	return n, err
 }
 
 type limitedReaderFrom struct {
@@ -148,18 +145,15 @@ type limitedReaderFrom struct {
 }
 
 func (re *limitedReaderFrom) ReadFrom(r io.Reader) (int64, error) {
-	if re.LastErr != nil {
-		return 0, re.LastErr
+	if re.exceeded {
+		return 0, ErrTooLarge
 	}
 
 	lr := &limitedReader{Source: r, N: re.N + 1}
 
 	n, err := re.rd.ReadFrom(lr)
-	if err != nil {
-		re.LastErr = err
-	}
-
 	re.N = max(lr.N-1, 0)
+	re.exceeded = lr.exceeded
 
-	return n, re.LastErr
+	return n, err
 }
